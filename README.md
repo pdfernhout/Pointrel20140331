@@ -10,7 +10,7 @@ To use this, first open the source/PointrelBoostrapLoader.html file in a web bro
 You can try a demo version here which will store data in your browser:
 http://rawgithub.com/pdfernhout/Pointrel20140331/master/source/PointrelBoostrapLoader.html
 
-Here is a direct link to the boostrap.json content to paste in as a start:
+Here is a direct link to the bootstrap.json content to paste in as a start:
 https://raw.githubusercontent.com/pdfernhout/Pointrel20140331/master/bootstrap/bootstrap.json
 
 Note:
