@@ -1,0 +1,452 @@
+<html>
+  <head>
+    <title>Bootstrap Pointrel on HTML5 using IndexedDB</title>
+    <style>
+      /* For seperating button groups */
+      .divider{
+        width: 10px;
+        height: auto;
+        display: inline-block;
+      }
+    </style>
+    <script src="require.js"></script>
+    <script>
+      if (!window.indexedDB) {
+        window.alert("Your browser doesn't support a stable version of IndexedDB.");
+      }
+      
+      // A place to put user defined functions
+      document.bootstrap = {};
+      
+      // Used to knwo if content has been changed
+      var lastLoadedContent = null;
+      
+      var databaseVersion = 2;
+      var db;
+      
+      console.log("starting with databaseVersion: ", databaseVersion);
+      var openRequest = window.indexedDB.open("PointrelDatabase", databaseVersion);
+      
+      openRequest.onsuccess = function(event) {
+        console.log("on success");
+        db = openRequest.result;
+        db.onerror = function(event) {
+          console.log("database error", event);
+          // From: https://developer.mozilla.org/en-US/docs/IndexedDB/Using_IndexedDB
+          // Generic error handler for all errors targeted at this database's requests
+          var error = event.target.error;
+          alert("Database error: " + error.name + " :: " + error.message);
+        };
+      };
+      
+      openRequest.onerror = function(event) {
+        console.log("on error");
+      };
+      
+      openRequest.onupgradeneeded = function(event) {
+        console.log("on upgrade needed", event.oldVersion, event.newVersion, event);
+        var db = event.target.result;
+        if (event.oldVersion <= 1) {
+          console.log("creating bootstrap store");
+          var bootstrap = db.createObjectStore("bootstrap");
+        }
+        if (event.oldVersion <= 0) {
+          console.log("creating openRequest store");
+          var resources = db.createObjectStore("resources");
+        }
+      };
+      
+      openRequest.onblocked = function(event) {
+        console.log("onblocked", event);
+        // If some other tab is loaded with the database,
+        // then it needs to be closed before we can proceed.
+        alert("Database upgrade can't proceed until all other tabs with this site are closed.");
+      };
+      
+      function fetch(proceed) {
+        if (proceed !== true && !confirmIfChanged()) return;
+        var id = document.getElementById("id").value;
+        console.log("fetch", id);
+        var transaction = db.transaction(["bootstrap"]);
+        var request = transaction.objectStore("bootstrap").get(id)
+        request.onsuccess = function(event) {
+          var result = event.target.result;
+          console.log("fetched result for", id);
+          if (result !== undefined) {
+            document.getElementById("data").value = result;
+            lastLoadedContent = result;
+          } else {
+            alert("resource not found for: " + id);
+          }
+        };
+      }
+      
+      function versions() {
+        if (!confirmIfChanged()) return;
+        var id = document.getElementById("id").value;
+        console.log("versions", id);
+        var result = {};
+        var objectStore = db.transaction("bootstrap").objectStore("bootstrap");
+        objectStore.openCursor().onsuccess = function(event) {
+          var cursor = event.target.result;
+          if (cursor) {
+            var key = cursor.key;
+            var data = cursor.value;
+            // console.log("ID ", key, " data: ", data.replace(/(\r\n|\n|\r)/gm, "\\n"));
+            if (startsWith(key, "@log::")) {
+              var dataID = splitLogKey(key).dataID;
+              if (dataID === id) {
+                result[key] = data;
+              }
+            }
+            cursor.continue();
+          } else {
+            // var dataString = JSON.stringify(result);
+            // console.log("result = ", dataString);
+            dataString = "";
+            for (var key in result) {
+              dataString = dataString + key + "\n" + result[key] + "\n" + "--------------------" + "\n";
+            }
+            document.getElementById("data").value = dataString;
+            lastLoadedContent = null;
+          }
+        };
+      }
+      
+      // Find the latest log entry for each dataID in a map and return a dictionary of results
+      function findLatest(ids, callback) {
+        // TODO: Optimize somehwo with an index since it looks through all items
+        console.log("latest", ids);
+        var result = {};
+        var objectStore = db.transaction("bootstrap").objectStore("bootstrap");
+        objectStore.openCursor().onsuccess = function(event) {
+          var cursor = event.target.result;
+          if (cursor) {
+            var key = cursor.key;
+            var data = cursor.value;
+            // console.log("latest key ", key);
+            if (startsWith(key, "@log::")) {
+              var keyParts = splitLogKey(key);
+              if (ids[keyParts.dataID] !== undefined) {
+                var previousKeyParts = result[keyParts.dataID];
+                if (previousKeyParts === undefined || previousKeyParts.timestamp < keyParts.timestamp) {
+                  result[keyParts.dataID] = keyParts;
+                  keyParts.data = data;
+                }
+              }
+            }
+            cursor.continue();
+          } else {
+            // var dataString = JSON.stringify(result);
+            // console.log("latest result = ", dataString);
+            callback(result);
+          }
+        };
+      }
+      
+      function splitLogKey(key) {
+        var segments = key.split("::");
+        result = {};
+        result.key = key;
+        result.timestamp = segments[1];
+        result.userID = segments[2];
+        result.dataID = segments[3];
+        // Add extra key parts back in from split implementation
+        var extra = segments.length;
+        for (var i = 4; i < segments.length; i++) {
+          result.dataID = result.dataID + "::" + segments[i];
+        }
+        // console.log("splitLogKey", key, result);
+        return result;
+      }
+
+      function listIDs() {
+        console.log("listIDs");
+        var result = {};
+        var objectStore = db.transaction("bootstrap").objectStore("bootstrap");
+        objectStore.openCursor().onsuccess = function(event) {
+          var cursor = event.target.result;
+          if (cursor) {
+            var key = cursor.key;
+            var data = cursor.value;
+            // console.log("ID ", key, " data: ", data.replace(/(\r\n|\n|\r)/gm, "\\n"));
+            if (startsWith(key, "@log::")) {
+              var dataID = splitLogKey(key).dataID;
+              result[dataID] = true;
+            } else {
+              result[key] = true;
+            }
+            cursor.continue();
+          } else {
+            dataString = "";
+            for (var key in result) {
+              // dataString = dataString + key + "\n";
+              dataString = dataString + clickableTitle(key) + "<br>";
+            }
+            // document.getElementById("data").value = dataString;
+            toggleDiv("List of IDs", dataString, false);
+          }
+        };
+      }
+      
+      function store() {
+        var id = document.getElementById("id").value;
+        if (startsWith(id, "@log:")) {
+          alert("User-supplied keys starting with '@log:' are not allowed for storage.")
+          return;
+        }
+        // Keep open brace reserved...
+        if (startsWith(id, "{")) {
+          alert("User-supplied keys starting with an open brace ('{') are not allowed for storage.")
+          return;
+        }
+        var data = document.getElementById("data").value;
+        console.log("store", id);
+        var transaction = db.transaction(["bootstrap"], "readwrite");
+        transaction.oncomplete = function(event) {
+          console.log("transaction done", event);
+        };
+        var objectStore = transaction.objectStore("bootstrap");
+        // var userID = "anonymous@example.com";
+        var dataID = id;
+        var userID = "pdfernhout@kurtz-fernhout.com";
+        var date = new Date();
+        var timestamp = date.toISOString();
+        // Over-engineered? Will show up as funny escaped strings in JSON for boostrap?
+        // var logKey = '{"@type":"LogEntry","timestamp":"' + timestamp + '","userID":' + JSON.stringify(userID) + ',"dataID":' + JSON.stringify(id) + '}';
+        var logKey = "@log::" + timestamp + "::" + userID + "::" + dataID;
+        var loggingRequest = objectStore.add(data, logKey);
+        loggingRequest.onsuccess = function(event) {
+          console.log("logging success", logKey);
+          var putRequest = objectStore.put(data, id);
+          putRequest.onsuccess = function(event) {
+            console.log("put data success", id);
+            lastLoadedContent = data;
+          };
+        };
+      }
+      
+      function confirmIfChanged() {
+        if (lastLoadedContent === null) return true;
+        var data = document.getElementById("data").value;
+        if (lastLoadedContent !== data) {
+          return confirm("You have unsaved changes that will be lost; proceed?");
+        }
+        return true;
+      }
+      
+      function clickedOnID(id) {
+        if (!confirmIfChanged()) return;
+        setID(id);
+        fetch(true);
+      }
+      
+      function setID(id) {
+        document.getElementById("id").value = id;
+      }
+      
+      function escapeQuotes(text){
+        return text.replace(/'/g, "\\'").replace(/"/g, '\\"');
+      }
+      
+      function escapeSingleQuotes(text){
+        return text.replace(/'/g, "\\'");
+      }
+      
+      function clickableTitle(title) {
+        return '<span title="Fetch this item" onclick="clickedOnID(\'' + escapeSingleQuotes(title) + '\')">' + title + '</span>';
+      }
+      
+      function closeBox(title) {
+        return '<span title="Close this item" onclick="toggleDiv(\'' + escapeSingleQuotes(title) + '\')">[X]</span>';
+      }
+      
+      function prettyDivider(title, clickable) {
+        var closer = closeBox(title);
+        if (clickable) title = clickableTitle(title);
+        return '----- ' + title + ' ----- ' + closer + '<br>';
+      }
+      
+      function view() {
+        var id = document.getElementById("id").value;
+        var data = document.getElementById("data").value;
+        console.log("view", id);
+        toggleDiv(id, data, true);
+      }
+      
+      function resetViews() {
+        var viewContentDiv = document.getElementById("view-content");
+        while (viewContentDiv.hasChildNodes()) {
+          viewContentDiv.removeChild(viewContentDiv.lastChild);
+          }
+      }
+      
+      function toggleDiv(id, data, clickable) {
+        // Toggle a view for the contents, put at the top of the all the items
+        var divName = "item_" + escapeQuotes(id.replace(/ /g, "_"));
+        var dataName = "data_" + escapeQuotes(id.replace(/ /g, "_"));
+        console.log("toggleDiv", id);
+        var viewContentDiv = document.getElementById("view-content");
+        var divForID = document.getElementById(divName);
+        if (divForID) {
+          viewContentDiv.removeChild(divForID);
+        } else {
+          divForID = document.createElement('div');
+          divForID.id = divName;
+          divForID.innerHTML = prettyDivider(id, clickable);
+          divForData = document.createElement('div');
+          divForData.id = dataName;
+          divForData.innerHTML = data;
+          divForID.appendChild(divForData);
+          var theFirstChild = viewContentDiv.firstChild;
+          viewContentDiv.insertBefore(divForID, theFirstChild);
+          // Scripts will apparently not be automatically evaluated, which must be done explicitely
+          // From: http://stackoverflow.com/questions/1197575/can-scripts-be-inserted-with-innerhtml
+          var arr = divForData.getElementsByTagName('script');
+          for (var n = 0; n < arr.length; n++) {
+            var scriptSrc = arr[n].src;
+            console.log("starting eval script", n);
+            if (scriptSrc) {
+              // document.getElementsByTagName('head')[0].appendChild(arr[n]);
+              console.log("Scripts with src fields are not handled -- use requirejs which is already loaded");
+            }
+            var scriptInner = arr[n].innerHTML;
+            if (scriptInner) {
+              try {
+                eval(scriptInner);
+              } catch (error) {
+                console.log("error evaluating javascript", error);
+              }
+            }
+          }
+        }
+      }
+      
+      function exportAll() {
+        if (!confirmIfChanged()) return;
+        var result = {};
+        var objectStore = db.transaction("bootstrap").objectStore("bootstrap");
+        objectStore.openCursor().onsuccess = function(event) {
+          var cursor = event.target.result;
+          if (cursor) {
+            var key = cursor.key;
+            var data = cursor.value;
+            // console.log("ID ", key, " data: ", data.replace(/(\r\n|\n|\r)/gm, "\\n"));
+            result[key] = data;
+            cursor.continue();
+          } else {
+            // console.log("No more entries 2!");
+            var dataString = JSON.stringify(result);
+            // console.log("result = ", dataString);
+            document.getElementById("data").value = dataString;
+            lastLoadedContent = null;
+          }
+        };
+      }
+      
+      function startsWith(whole, part) {
+        return whole.lastIndexOf(part, 0) === 0;
+      }
+
+      function importAndMerge() {
+        if (confirm("Merge in items from JSON parsed from the test area?")) {
+          console.log("importAndMerge proceeding");
+          var newData = document.getElementById("data").value;
+          if (!startsWith(newData, "{")) {
+            console.log("bad data");
+            alert("Must be JSON data starting with open brace ('{')");
+            return;
+          }
+          var dataToMerge = JSON.parse(newData);
+          var transaction = db.transaction(["bootstrap"], "readwrite");
+          var objectStore = transaction.objectStore("bootstrap");
+          // First do log items
+          var dataItemsToUpdate = {};
+          for (var key in dataToMerge) {
+            if (dataToMerge.hasOwnProperty(key)) {
+              if (startsWith(key, "@log::")) {
+                // TODO: Should warn if keys are the same but data is different
+                // TODO: If a conflict, maybe should stick with original or provide choice
+                var addRequest = objectStore.put(dataToMerge[key], key);
+                var dataID = splitLogKey(key).dataID;
+                // console.log("need to update", dataID);
+                dataItemsToUpdate[dataID] = true;
+              } else {
+                // Ignore items not in log entries for now
+                // keysToAdd[key] = true;
+              }
+            }
+          }
+          transaction.oncomplete = function(event) {
+            // TODO: Would be better to do as single transaction
+            console.log("finished with first stage of importAndMerge");
+            var latest = [];
+            console.log("calling findLatest for:", dataItemsToUpdate)
+            findLatest(dataItemsToUpdate, function(latestDataItems) {
+              var transaction2 = db.transaction(["bootstrap"], "readwrite");
+              var objectStore2 = transaction2.objectStore("bootstrap");
+              transaction2.oncomplete = function(event) {
+                console.log("finished with second stage of importAndMerge");
+              }
+
+              for (var dataID2 in dataItemsToUpdate) {
+                if (dataItemsToUpdate.hasOwnProperty(dataID2)) {
+                  // console.log("dataID2", dataID2);
+                  latestDataItem = latestDataItems[dataID2];
+                  if (latestDataItem !== undefined) {
+                    var addRequest2 = objectStore2.put(latestDataItem.data, dataID2);
+                  } else {
+                    console.log("dataItem was not found for:", dataID2);
+                  }
+                }
+              }
+            });
+          };
+        }
+      }
+
+      function replaceAll() {
+        if (confirm("Replace all bootstrap data with JSON parsed from the test area?")) {
+          console.log("replaceAll proceeding");
+          var newData = document.getElementById("data").value;
+          if (!startsWith(newData, "{")) {
+            console.log("bad data");
+            alert("Must be JSON data starting with open brace ('{')");
+            return;
+          }
+          var newBootstrap = JSON.parse(newData);
+          var transaction = db.transaction(["bootstrap"], "readwrite");
+          var objectStore = transaction.objectStore("bootstrap");
+          var clearRequest = objectStore.clear();
+          for (var key in newBootstrap) {
+            if (newBootstrap.hasOwnProperty(key)) {
+              var addRequest = objectStore.add(newBootstrap[key], key);
+            }
+          }
+          transaction.oncomplete = function(event) {
+            console.log("finished with replaceAll");
+          };
+        }
+      }
+    </script>
+  </head>
+  <body>
+    <div id="bootstrap-controls">
+      ID: <input type="text" id="id"/>
+      <input type="submit" id="fetch" value="Fetch" title="Fetch the content associated with the ID from storage" onclick="fetch()"/>
+      <input type="submit" id="store" value="Store" title="Store the content so it can be later retrieved again from the ID" onclick="store()"/>
+      <input type="submit" id="versions" value="Versions" title="Collect all the previous versions of the ID's content and put them in the text box identified by timestamps" onclick="versions()"/>
+      <div class="divider"></div>
+      <input type="submit" id="view" value="Open View" title="Toggle a view of the current content in the text box as a div below associated with the ID" onclick="view()"/>
+      <input type="submit" id="reset" value="Close all Views" title="Clear all the view divs below" onclick="resetViews()"/>
+      <div class="divider"></div>
+      <input type="submit" id="listIDs" value="List all IDs" title="Toggle a view collecting all the IDs as a list with clickable links" onclick="listIDs()"/>
+      <input type="submit" id="exportAll" value="Export all" title="Collect all the versions of all IDs and put them as JSON in the text box" onclick="exportAll()"/>
+      <input type="submit" id="importAndMerge" value="Import and Merge" title="Import the JSON data in the text box and merge it with what is already in storage, setting items to the latest version" onclick="importAndMerge()"/>
+      <input type="submit" id="loadAll" value="Replace all" title="Replace all the stored data with the JSON data in the text box" onclick="replaceAll()"/>
+      <br>
+      <textarea rows="4" cols="50" id="data"></textarea><br>
+    </div>
+    <div id="view-content"></div>
+  </body>
+</html>
