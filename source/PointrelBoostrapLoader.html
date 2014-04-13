@@ -15,6 +15,17 @@
         window.alert("Your browser doesn't support a stable version of IndexedDB.");
       }
       
+      var onloadOld = window.onload;
+      window.onload = function() {
+        console.log("onload", onloadOld);
+        if (onloadOld) onloadOld();
+        if (typeof(Storage) !== "undefined") {
+          var userID = localStorage.Pointrel20140331_userID;
+          console.log("userID", userID)
+          if (userID) document.getElementById("userID").value= userID;
+        }
+      }
+      
       // A place to put user defined functions
       document.bootstrap = {};
       
@@ -208,8 +219,22 @@
         };
         var objectStore = transaction.objectStore("bootstrap");
         // var userID = "anonymous@example.com";
+        // var userID = "pdfernhout@kurtz-fernhout.com";
+        var userID = document.getElementById("userID").value;
+        if (!userID) {
+          alert("Please enter a userID to tag your commits\nsuch as an email address like anonymous@example.com");
+          return;
+        }
+        // The code splits log entry keys on '::' so don't allow user to enter it
+        if (userID.indexOf("::") != -1) {
+          alert("The userID is not allowed to have a '::' in it.");
+          return;
+        }
+        // Remember userID accross page reloads
+        if (typeof(Storage) !== "undefined") {
+          localStorage.Pointrel20140331_userID = userID;
+        }
         var dataID = id;
-        var userID = "pdfernhout@kurtz-fernhout.com";
         var date = new Date();
         var timestamp = date.toISOString();
         // Over-engineered? Will show up as funny escaped strings in JSON for boostrap?
@@ -432,20 +457,21 @@
   </head>
   <body>
     <div id="bootstrap-controls">
-      ID: <input type="text" id="id"/>
+      Data ID: <input type="text" id="id" size="40"/>
       <input type="submit" id="fetch" value="Fetch" title="Fetch the content associated with the ID from storage" onclick="fetch()"/>
       <input type="submit" id="store" value="Store" title="Store the content so it can be later retrieved again from the ID" onclick="store()"/>
-      <input type="submit" id="versions" value="Versions" title="Collect all the previous versions of the ID's content and put them in the text box identified by timestamps" onclick="versions()"/>
       <div class="divider"></div>
       <input type="submit" id="view" value="Open View" title="Toggle a view of the current content in the text box as a div below associated with the ID" onclick="view()"/>
+      <input type="submit" id="versions" value="Versions" title="Collect all the previous versions of the ID's content and put them in the text box identified by timestamps" onclick="versions()"/>
+      User ID: <input type="text" id="userID" size="30"/>
+      <br>
+      <textarea rows="4" cols="50" id="data"></textarea><br>
+      <input type="submit" id="listIDs" value="List all IDs" title="Toggle a view collecting all the IDs as a list with clickable links" onclick="listIDs()"/>
       <input type="submit" id="reset" value="Close all Views" title="Clear all the view divs below" onclick="resetViews()"/>
       <div class="divider"></div>
-      <input type="submit" id="listIDs" value="List all IDs" title="Toggle a view collecting all the IDs as a list with clickable links" onclick="listIDs()"/>
       <input type="submit" id="exportAll" value="Export all" title="Collect all the versions of all IDs and put them as JSON in the text box" onclick="exportAll()"/>
       <input type="submit" id="importAndMerge" value="Import and Merge" title="Import the JSON data in the text box and merge it with what is already in storage, setting items to the latest version" onclick="importAndMerge()"/>
       <input type="submit" id="loadAll" value="Replace all" title="Replace all the stored data with the JSON data in the text box" onclick="replaceAll()"/>
-      <br>
-      <textarea rows="4" cols="50" id="data"></textarea><br>
     </div>
     <div id="view-content"></div>
   </body>
