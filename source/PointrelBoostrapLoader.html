@@ -78,18 +78,18 @@
         if (proceed !== true && !confirmIfChanged()) return;
         var id = document.getElementById("id").value;
         console.log("fetch", id);
-        var transaction = db.transaction(["bootstrap"]);
-        var request = transaction.objectStore("bootstrap").get(id)
-        request.onsuccess = function(event) {
-          var result = event.target.result;
+        var ids = {}
+        ids[id]  = true;
+        findLatest(ids, function(items) {
+          var item = items[id];
           console.log("fetched result for", id);
-          if (result !== undefined) {
-            document.getElementById("data").value = result;
-            lastLoadedContent = result;
+          if (item !== undefined) {
+            document.getElementById("data").value = item.data;
+            lastLoadedContent = item.data;
           } else {
             alert("resource not found for: " + id);
           }
-        };
+        });
       }
       
       function versions() {
@@ -126,7 +126,7 @@
       
       // Find the latest log entry for each dataID in a map and return a dictionary of results
       function findLatest(ids, callback) {
-        // TODO: Optimize somehwo with an index since it looks through all items
+        // TODO: Optimize somehow with an index since it looks through all items
         console.log("latest", ids);
         var result = {};
         var objectStore = db.transaction("bootstrap").objectStore("bootstrap");
@@ -218,8 +218,6 @@
           console.log("transaction done", event);
         };
         var objectStore = transaction.objectStore("bootstrap");
-        // var userID = "anonymous@example.com";
-        // var userID = "pdfernhout@kurtz-fernhout.com";
         var userID = document.getElementById("userID").value;
         if (!userID) {
           alert("Please enter a userID to tag your commits\nsuch as an email address like anonymous@example.com");
@@ -237,17 +235,11 @@
         var dataID = id;
         var date = new Date();
         var timestamp = date.toISOString();
-        // Over-engineered? Will show up as funny escaped strings in JSON for boostrap?
-        // var logKey = '{"@type":"LogEntry","timestamp":"' + timestamp + '","userID":' + JSON.stringify(userID) + ',"dataID":' + JSON.stringify(id) + '}';
         var logKey = "@log::" + timestamp + "::" + userID + "::" + dataID;
         var loggingRequest = objectStore.add(data, logKey);
         loggingRequest.onsuccess = function(event) {
           console.log("logging success", logKey);
-          var putRequest = objectStore.put(data, id);
-          putRequest.onsuccess = function(event) {
-            console.log("put data success", id);
-            lastLoadedContent = data;
-          };
+          lastLoadedContent = data;
         };
       }
       
@@ -348,6 +340,7 @@
       }
       
       function exportAll() {
+        console.log("exportAll");
         if (!confirmIfChanged()) return;
         var result = {};
         var objectStore = db.transaction("bootstrap").objectStore("bootstrap");
@@ -356,12 +349,16 @@
           if (cursor) {
             var key = cursor.key;
             var data = cursor.value;
-            // console.log("ID ", key, " data: ", data.replace(/(\r\n|\n|\r)/gm, "\\n"));
-            result[key] = data;
+            // Only export log data for now to cleanup
+            if (startsWith(key, "@log::")) {
+              result[key] = data;
+            } else {
+              console.log("ERROR: Unexpected key for data", key);
+            }
             cursor.continue();
           } else {
             // console.log("No more entries 2!");
-            var dataString = JSON.stringify(result);
+            var dataString = JSON.stringify(result, null, "  ");
             // console.log("result = ", dataString);
             document.getElementById("data").value = dataString;
             lastLoadedContent = null;
@@ -374,6 +371,7 @@
       }
 
       function importAndMerge() {
+        console.log("importAndMerge");
         if (confirm("Merge in items from JSON parsed from the test area?")) {
           console.log("importAndMerge proceeding");
           var newData = document.getElementById("data").value;
@@ -399,38 +397,40 @@
               } else {
                 // Ignore items not in log entries for now
                 // keysToAdd[key] = true;
+                console.log("ERROR: Unexpected key for data", key);
               }
             }
           }
           transaction.oncomplete = function(event) {
             // TODO: Would be better to do as single transaction
             console.log("finished with first stage of importAndMerge");
-            var latest = [];
-            console.log("calling findLatest for:", dataItemsToUpdate)
-            findLatest(dataItemsToUpdate, function(latestDataItems) {
-              var transaction2 = db.transaction(["bootstrap"], "readwrite");
-              var objectStore2 = transaction2.objectStore("bootstrap");
-              transaction2.oncomplete = function(event) {
-                console.log("finished with second stage of importAndMerge");
-              }
-
-              for (var dataID2 in dataItemsToUpdate) {
-                if (dataItemsToUpdate.hasOwnProperty(dataID2)) {
-                  // console.log("dataID2", dataID2);
-                  latestDataItem = latestDataItems[dataID2];
-                  if (latestDataItem !== undefined) {
-                    var addRequest2 = objectStore2.put(latestDataItem.data, dataID2);
-                  } else {
-                    console.log("dataItem was not found for:", dataID2);
-                  }
-                }
-              }
-            });
+            // var latest = [];
+            // console.log("calling findLatest for:", dataItemsToUpdate)
+            // findLatest(dataItemsToUpdate, function(latestDataItems) {
+            //   var transaction2 = db.transaction(["bootstrap"], "readwrite");
+            //   var objectStore2 = transaction2.objectStore("bootstrap");
+            //   transaction2.oncomplete = function(event) {
+            //     console.log("finished with second stage of importAndMerge");
+            //   }
+            //
+            //   for (var dataID2 in dataItemsToUpdate) {
+            //     if (dataItemsToUpdate.hasOwnProperty(dataID2)) {
+            //       // console.log("dataID2", dataID2);
+            //       latestDataItem = latestDataItems[dataID2];
+            //       if (latestDataItem !== undefined) {
+            //         var addRequest2 = objectStore2.put(latestDataItem.data, dataID2);
+            //       } else {
+            //         console.log("dataItem was not found for:", dataID2);
+            //       }
+            //     }
+            //   }
+            // });
           };
         }
       }
 
       function replaceAll() {
+        console.log("replaceAll");
         if (confirm("Replace all bootstrap data with JSON parsed from the test area?")) {
           console.log("replaceAll proceeding");
           var newData = document.getElementById("data").value;
@@ -445,7 +445,12 @@
           var clearRequest = objectStore.clear();
           for (var key in newBootstrap) {
             if (newBootstrap.hasOwnProperty(key)) {
-              var addRequest = objectStore.add(newBootstrap[key], key);
+              // Only use the log data for now...
+              if (startsWith(key, "@log::")) {
+                var addRequest = objectStore.add(newBootstrap[key], key);
+              } else {
+                console.log("ERROR: Unexpected key for data", key)
+              }
             }
           }
           transaction.oncomplete = function(event) {
