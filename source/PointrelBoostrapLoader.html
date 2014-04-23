@@ -8,6 +8,20 @@
         height: auto;
         display: inline-block;
       }
+      
+      /* toastDiv styling derived from: http://css.dzone.com/articles/android-toast-alerts-html */
+      #toastDiv {
+        position: fixed;
+        top: 20px;
+        left: 10%;
+        width: 300px;
+        margin-left: -100px;
+        border: 1px solid #666;
+        background-color: #F4A460; /* Sandy brown */
+        padding: 10px 0;
+        text-align: center;
+        opacity: .9;
+      }
     </style>
     <script src="require.js"></script>
     <script>
@@ -29,7 +43,7 @@
       // A place to put user defined functions
       document.bootstrap = {};
       
-      // Used to knwo if content has been changed
+      // Used to know if content has been changed
       var lastLoadedContent = null;
       
       var databaseVersion = 2;
@@ -48,6 +62,7 @@
           var error = event.target.error;
           alert("Database error: " + error.name + " :: " + error.message);
         };
+        configureUIAfterDBLoaded();
       };
       
       openRequest.onerror = function(event) {
@@ -74,6 +89,86 @@
         alert("Database upgrade can't proceed until all other tabs with this site are closed.");
       };
       
+      function getParameter(paramName) {
+        var searchString = window.location.search.substring(1);
+        var i;
+        var val;
+        var params = searchString.split("&");
+
+        for (i = 0; i < params.length; i++) {
+            val = params[i].split("=");
+            if (val[0] == paramName) {
+                try {
+                  return decodeURI(val[1]);
+                } catch (ex) {
+                  alert("Problem parsing URI: " + val[1]);
+                  //return val[1];
+                }
+            }
+        }
+        return null;
+      }
+
+      function configureUIAfterDBLoaded() {
+        var chosenDataID = getParameter("view");
+        if (chosenDataID) {
+          console.log("Read document from: " + chosenDataID);
+          viewOnly(chosenDataID);
+        } else {
+          document.getElementById('bootstrap-controls').hidden = false;
+          var chosenDataID = getParameter("edit");
+          if (chosenDataID) {
+            document.getElementById("id").value = chosenDataID;
+            fetch(true);
+          }
+        }
+      }
+      
+      function viewOnlyForCurrent() {
+        var dataID = document.getElementById("id").value;
+        console.log("viewOnlyForCurrent: " + dataID);
+        var url = document.URL;
+        var tempArray = url.split("?");
+        var baseURL = tempArray[0];
+        var jumpURL = baseURL + "?view=" + encodeURI(dataID);
+        console.log("viewOnlyForCurrent uri: " + jumpURL);
+        // From: http://stackoverflow.com/questions/4907843/open-a-url-in-a-new-tab-using-javascript
+        document.getElementById("browse-link").setAttribute("href", jumpURL);
+        document.getElementById("browse-link").setAttribute("target", "_blank");
+        document.getElementById("browse-link").dispatchEvent((function(e) {
+          e.initMouseEvent("click", true, true, window, 0, 0, 0, 0, 0, false, false, false, false, 0, null);
+          return e;
+          }(document.createEvent('MouseEvents'))));
+      }
+      
+      function viewOnly(dataID) {
+        console.log("view only for: " + dataID);
+        var ids = {}
+        ids[dataID]  = true;
+        findLatest(ids, function(items) {
+          var item = items[dataID];
+          console.log("viewOnly fetch result for", id);
+          if (item !== undefined) {
+            toggleDiv(dataID, item.data, false, true);
+            lastLoadedContent = item.data;
+            // toast("viewOnly fetched: " + item.timestamp + " " + escapeHtml(item.userID));
+          } else {
+            var createLinkMessage = '<br>Click <a href="#" onclick="create()">here</a> to create it.';
+            toggleDiv(dataID, "Resource not found for: " + dataID + createLinkMessage, false, true);
+            alert("resource not found for: " + dataID);
+          }
+        });
+      }
+      
+      function create() {
+        document.getElementById('bootstrap-controls').hidden = false;
+        resetViews();
+        var chosenDataID = getParameter("view");
+        if (chosenDataID) {
+          document.getElementById("id").value = chosenDataID;
+        }
+      }
+
       function fetch(proceed) {
         if (proceed !== true && !confirmIfChanged()) return;
         var id = document.getElementById("id").value;
@@ -86,6 +181,7 @@
           if (item !== undefined) {
             document.getElementById("data").value = item.data;
             lastLoadedContent = item.data;
+            toast("fetched: " + item.timestamp + " " + escapeHtml(item.userID));
           } else {
             alert("resource not found for: " + id);
           }
@@ -240,6 +336,7 @@
         loggingRequest.onsuccess = function(event) {
           console.log("logging success", logKey);
           lastLoadedContent = data;
+          toast("stored: " + timestamp + " " + escapeHtml(userID));
         };
       }
       
@@ -298,7 +395,7 @@
           }
       }
       
-      function toggleDiv(id, data, clickable) {
+      function toggleDiv(id, data, clickable, hideTitle) {
         // Toggle a view for the contents, put at the top of the all the items
         var divName = "item_" + escapeQuotes(id.replace(/ /g, "_"));
         var dataName = "data_" + escapeQuotes(id.replace(/ /g, "_"));
@@ -310,7 +407,7 @@
         } else {
           divForID = document.createElement('div');
           divForID.id = divName;
-          divForID.innerHTML = prettyDivider(id, clickable);
+          if (!hideTitle) divForID.innerHTML = prettyDivider(id, clickable);
           divForData = document.createElement('div');
           divForData.id = dataName;
           divForData.innerHTML = data;
@@ -477,19 +574,41 @@
 
         fileControl.click();
       }
+      
+    function escapeHtml(unsafe) {
+      return unsafe
+       .replace(/&/g, "&amp;")
+       .replace(/</g, "&lt;")
+       .replace(/>/g, "&gt;")
+       .replace(/"/g, "&quot;")
+       .replace(/'/g, "&#039;");
+    }
+ 
+    function toast(message) {
+      var toastDiv = document.getElementById("toastDiv");
+      toastDiv.hidden = false;
+      toastDiv.innerHTML = message;
+      setTimeout(function() {
+        toastDiv.hidden = true;
+      },1000);
+    }
     </script>
   </head>
   <body>
-    <div id="bootstrap-controls">
-      Data ID: <input type="text" id="id" size="40"/>
+    <div id="toastDiv" hidden>Some temporarily displayed toast-y contents</div>
+    <div id="bootstrap-controls" hidden>
+      Data ID: <input type="text" id="id" size="36"/>
       <input type="submit" id="fetch" value="Fetch" title="Fetch the content associated with the ID from storage" onclick="fetch()"/>
       <input type="submit" id="store" value="Store" title="Store the content so it can be later retrieved again from the ID" onclick="store()"/>
       <div class="divider"></div>
-      <input type="submit" id="view" value="Open View" title="Toggle a view of the current content in the text box as a div below associated with the ID" onclick="view()"/>
+      <input type="submit" id="view" value="View below" title="Toggle a view of the current content in the text box as a div below associated with the ID" onclick="view()"/>
+      <input type="submit" id="browse" value="Browse" title="Open a new browser tab or window as viewOnly on the current stored value of the ID" onclick="viewOnlyForCurrent()"/>
+      <a href="#" id="browse-link" hidden></a>
       <input type="submit" id="versions" value="Versions" title="Collect all the previous versions of the ID's content and put them in the text box identified by timestamps" onclick="versions()"/>
-      User ID: <input type="text" id="userID" size="30"/>
+      User ID: <input type="text" id="userID" size="27"/>
       <br>
-      <textarea rows="4" cols="50" id="data"></textarea><br>
+      <textarea rows="4" cols="50" id="data"></textarea>
+      <br>
       <input type="submit" id="listIDs" value="List all IDs" title="Toggle a view collecting all the IDs as a list with clickable links" onclick="listIDs()"/>
       <input type="submit" id="reset" value="Close all Views" title="Clear all the view divs below" onclick="resetViews()"/>
       <div class="divider"></div>
