@@ -3,14 +3,15 @@ Pointrel20140331
 
 A version of the Pointrel data repository system in HTML5/CSS/JavaScript
 
-This stores snippets of HTML entered in a text area in a local IndexedDB database in your browser. These snippets can be displayed in a list below the edit box. TiddlyWiki was a bit of an inspiration for that list display. This is intended to support "bootstrapping" more a more complex system, such as Doug Engelbart worked toward to support a co-evolution of tools, knowledge, communtiy, and processes.
+This stores snippets of HTML entered in a text area in a local IndexedDB database in your browser. These snippets can be displayed in a list below the edit box. TiddlyWiki was a bit of an inspiration for that list display. This is intended to support "bootstrapping" more a more complex system, such as Doug Engelbart worked toward to support a co-evolution of tools, knowledge, community, and processes.
 
-Note: Because this software uses IndexedDB, it will not currently work with Mac OS X Safari. You could try it with a diferent browser like FireFOx or Chrome or try modifying the code to use a "shim" like this one: http://nparashuram.com/IndexedDBShim/
+Note: Because this software uses IndexedDB, it will not currently work with Mac OS X Safari. You could try it with a diferent browser like FireFox or Chrome or try modifying the code to use a "shim" like this one: http://nparashuram.com/IndexedDBShim/
 You can check if your browser supports IndexedDb here: http://caniuse.com/indexeddb
 
-To use this, first open the source/PointrelBoostrapLoader.html file in a web browser (which also loads require.js included in that directory). Then as a demo you can cut and paste in the contents of bootstrap/bootstrap.json into the text field and click the "Replace All" button. There are hover hints over the buttons suggesting what they can do. After you have loaded some content, you can click on "List all IDs" to get a list of all the items. Click on an item to load the content in the text area. Then click "Open view" to display that content as part of the HTML page. 
+To use this, first open the source/PointrelBootstrapLoader.html file in a web browser (which also loads require.js included in that directory). Then as a demo you can cut and paste in the contents of bootstrap/bootstrap.json into the text field and click the "Replace All" button. There are hover hints over the buttons suggesting what they can do. After you have loaded some content, you can click on "List all IDs" to get a list of all the items. Click on an item to load the content in the text area. Then click "Open view" to display that content as part of the HTML page.
+
 After you store some content, you can click "Browse" to view only that content
-in a new browser window instead of lower down on the eidtor page.
+in a new browser window instead of lower down on the editor page.
 Browsed content will look like a stand-alone web page or application.
 However, it is not stand-alone because it relies on the bootstrap loader.
 Also, by changing "view" to "edit" in the URL parameters and reloading the page,
