@@ -1,8 +1,23 @@
 <html>
+  <!--
+  A version of the Pointrel data repository system in HTML5/CSS/JavaScript using IndexedDB.
+  Note that IndexedDB is not currently (2014-04-28) supported in Safari.
+
+  This stores snippets of HTML entered in a text area in a local IndexedDB database in your browser.
+  These snippets can be displayed in a list below the edit box.
+  TiddlyWiki was a bit of an inspiration for that list display.
+  
+  This is intended to support "bootstrapping" more a more complex system,
+  such as Doug Engelbart worked toward to support a co-evolution of tools, knowledge, community, and processes.
+  So, the purpose of this code is to support bootstrapping something better,
+  like the old "bootstrap" loaders for the original personal computers.
+  
+  See also: https://github.com/pdfernhout/Pointrel20140331
+  -->
   <head>
     <title>Bootstrap Pointrel on HTML5 using IndexedDB</title>
     <style>
-      /* For seperating button groups */
+      /* For separating button groups */
       .divider{
         width: 10px;
         height: auto;
@@ -40,10 +55,10 @@
         }
       }
       
-      // A place to put user defined functions
+      // A place to put user defined functions from data items
       document.bootstrap = {};
       
-      // Used to know if content has been changed
+      // For tracking if content has been changed
       var lastLoadedContent = null;
       
       var databaseVersion = 2;
@@ -84,9 +99,9 @@
       
       openRequest.onblocked = function(event) {
         console.log("onblocked", event);
-        // If some other tab is loaded with the database,
-        // then it needs to be closed before we can proceed.
-        alert("Database upgrade can't proceed until all other tabs with this site are closed.");
+        // If some other Pointrel20140331 browser tab is loaded and using the database,
+        // then the tab needs to be closed before we can proceed.
+        alert("Database upgrade can't proceed until all other Pointrel tabs from this site are closed.");
       };
       
       function getParameter(paramName) {
@@ -102,7 +117,6 @@
                   return decodeURI(val[1]);
                 } catch (ex) {
                   alert("Problem parsing URI: " + val[1]);
-                  //return val[1];
                 }
             }
         }
@@ -142,7 +156,7 @@
       }
       
       function viewOnly(dataID) {
-        console.log("view only for: " + dataID);
+        console.log("viewOnly for: " + dataID);
         var ids = {}
         ids[dataID]  = true;
         findLatest(ids, function(items) {
@@ -151,7 +165,6 @@
           if (item !== undefined) {
             toggleDiv(dataID, item.data, false, true);
             lastLoadedContent = item.data;
-            // toast("viewOnly fetched: " + item.timestamp + " " + escapeHtml(item.userID));
           } else {
             var createLinkMessage = '<br>Click <a href="#" onclick="create()">here</a> to create it.';
             toggleDiv(dataID, "Resource not found for: " + dataID + createLinkMessage, false, true);
@@ -199,7 +212,6 @@
           if (cursor) {
             var key = cursor.key;
             var data = cursor.value;
-            // console.log("ID ", key, " data: ", data.replace(/(\r\n|\n|\r)/gm, "\\n"));
             if (startsWith(key, "@log::")) {
               var dataID = splitLogKey(key).dataID;
               if (dataID === id) {
@@ -208,8 +220,6 @@
             }
             cursor.continue();
           } else {
-            // var dataString = JSON.stringify(result);
-            // console.log("result = ", dataString);
             dataString = "";
             for (var key in result) {
               dataString = dataString + key + "\n" + result[key] + "\n" + "--------------------" + "\n";
@@ -231,7 +241,6 @@
           if (cursor) {
             var key = cursor.key;
             var data = cursor.value;
-            // console.log("latest key ", key);
             if (startsWith(key, "@log::")) {
               var keyParts = splitLogKey(key);
               if (ids[keyParts.dataID] !== undefined) {
@@ -244,8 +253,6 @@
             }
             cursor.continue();
           } else {
-            // var dataString = JSON.stringify(result);
-            // console.log("latest result = ", dataString);
             callback(result);
           }
         };
@@ -263,7 +270,6 @@
         for (var i = 4; i < segments.length; i++) {
           result.dataID = result.dataID + "::" + segments[i];
         }
-        // console.log("splitLogKey", key, result);
         return result;
       }
 
@@ -276,7 +282,6 @@
           if (cursor) {
             var key = cursor.key;
             var data = cursor.value;
-            // console.log("ID ", key, " data: ", data.replace(/(\r\n|\n|\r)/gm, "\\n"));
             if (startsWith(key, "@log::")) {
               var dataID = splitLogKey(key).dataID;
               result[dataID] = true;
@@ -287,10 +292,8 @@
           } else {
             dataString = "";
             for (var key in result) {
-              // dataString = dataString + key + "\n";
               dataString = dataString + clickableTitle(key) + "<br>";
             }
-            // document.getElementById("data").value = dataString;
             toggleDiv("List of IDs", dataString, false);
           }
         };
@@ -298,40 +301,49 @@
       
       function store() {
         var id = document.getElementById("id").value;
+        
         if (startsWith(id, "@log:")) {
           alert("User-supplied keys starting with '@log:' are not allowed for storage.")
           return;
         }
+        
         // Keep open brace reserved...
         if (startsWith(id, "{")) {
           alert("User-supplied keys starting with an open brace ('{') are not allowed for storage.")
           return;
         }
+        
         var data = document.getElementById("data").value;
         console.log("store", id);
+        
         var transaction = db.transaction(["bootstrap"], "readwrite");
         transaction.oncomplete = function(event) {
           console.log("transaction done", event);
         };
         var objectStore = transaction.objectStore("bootstrap");
+        
         var userID = document.getElementById("userID").value;
         if (!userID) {
           alert("Please enter a userID to tag your commits\nsuch as an email address like anonymous@example.com");
           return;
         }
-        // The code splits log entry keys on '::' so don't allow user to enter it
+        
+        // The code splits log entry keys on '::' so don't allow user to enter it for a userID
         if (userID.indexOf("::") != -1) {
           alert("The userID is not allowed to have a '::' in it.");
           return;
         }
-        // Remember userID accross page reloads
+        
+        // Remember userID across page reloads
         if (typeof(Storage) !== "undefined") {
           localStorage.Pointrel20140331_userID = userID;
         }
+        
         var dataID = id;
         var date = new Date();
         var timestamp = date.toISOString();
         var logKey = "@log::" + timestamp + "::" + userID + "::" + dataID;
+        
         var loggingRequest = objectStore.add(data, logKey);
         loggingRequest.onsuccess = function(event) {
           console.log("logging success", logKey);
@@ -421,7 +433,6 @@
             var scriptSrc = arr[n].src;
             console.log("starting eval script", n);
             if (scriptSrc) {
-              // document.getElementsByTagName('head')[0].appendChild(arr[n]);
               console.log("Scripts with src fields are not handled -- use requirejs which is already loaded");
             }
             var scriptInner = arr[n].innerHTML;
@@ -446,7 +457,7 @@
           if (cursor) {
             var key = cursor.key;
             var data = cursor.value;
-            // Only export log data for now to cleanup
+            // TODO: Only export log data for now to cleanup from earlier versions-- this can be removed soon
             if (startsWith(key, "@log::")) {
               result[key] = data;
             } else {
@@ -454,9 +465,7 @@
             }
             cursor.continue();
           } else {
-            // console.log("No more entries 2!");
             var dataString = JSON.stringify(result, null, "  ");
-            // console.log("result = ", dataString);
             document.getElementById("data").value = dataString;
             lastLoadedContent = null;
           }
@@ -480,7 +489,7 @@
           var dataToMerge = JSON.parse(newData);
           var transaction = db.transaction(["bootstrap"], "readwrite");
           var objectStore = transaction.objectStore("bootstrap");
-          // First do log items
+          // Currently imports only log items
           var dataItemsToUpdate = {};
           for (var key in dataToMerge) {
             if (dataToMerge.hasOwnProperty(key)) {
@@ -489,12 +498,12 @@
                 // TODO: If a conflict, maybe should stick with original or provide choice
                 var addRequest = objectStore.put(dataToMerge[key], key);
                 var dataID = splitLogKey(key).dataID;
-                // console.log("need to update", dataID);
+                console.log("importAndMerge from: ", dataID, key);
                 dataItemsToUpdate[dataID] = true;
               } else {
-                // Ignore items not in log entries for now
-                // keysToAdd[key] = true;
-                console.log("ERROR: Unexpected key for data", key);
+                // Ignore items not in log entries for now; might change
+                // This is how the field would be added: keysToAdd[key] = true;
+                console.log("ERROR: Unexpected key for data -- it is not log entry", key);
               }
             }
           }
