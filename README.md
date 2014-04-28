@@ -23,7 +23,7 @@ http://rawgithub.com/pdfernhout/Pointrel20140331/master/source/PointrelBootstrap
 Here is a direct link to the bootstrap.json content to paste in as a start:
 https://raw.githubusercontent.com/pdfernhout/Pointrel20140331/master/bootstrap/bootstrap.json
 
-Heire is an alternate demo link, which will store data in a different local database associated with the different domain:
+Heire is an alternate demo link, which will store data in a different local database associated with the different domain ("Browse" in viewOnly mode does not currently work correctly on this site):
 http://htmlpreview.github.io/?https://github.com/pdfernhout/Pointrel20140331/blob/master/source/PointrelBootstrapLoader.html
 
 Note:
