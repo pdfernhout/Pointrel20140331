@@ -466,6 +466,9 @@
             cursor.continue();
           } else {
             var dataString = JSON.stringify(result, null, "  ");
+            var date = new Date();
+            var timestamp = date.toISOString();
+            document.getElementById("id").value = "Pointrel20140331.bootstrap.export." + timestamp + ".json";
             document.getElementById("data").value = dataString;
             lastLoadedContent = null;
           }
