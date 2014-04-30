@@ -23,8 +23,12 @@ http://rawgithub.com/pdfernhout/Pointrel20140331/master/source/PointrelBootstrap
 Here is a direct link to the bootstrap.json content to paste in as a start:  
 https://raw.githubusercontent.com/pdfernhout/Pointrel20140331/master/bootstrap/bootstrap.json
 
-Heire is an alternate demo link, which will store data in a different local database associated with the different domain ("Browse" in viewOnly mode does not currently work correctly on this site):  
+Here is an alternate demo link, which will store data in a different local database associated with the different domain:  
 http://htmlpreview.github.io/?https://github.com/pdfernhout/Pointrel20140331/blob/master/source/PointrelBootstrapLoader.html
+
+"Browse" in viewOnly mode does not currently work correctly on this second site.
+Also, "Browse" does not seem to work as expected with FireFox 28,
+because FireFox seems to treat the query string to a file as part of the security domain -- so it creates a new IndexedDB which does not have the data.
 
 Note:
 The project's source code itself is under the MIT license.
