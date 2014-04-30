@@ -10,7 +10,7 @@ You can check if your browser supports IndexedDB here: http://caniuse.com/indexe
 
 To use this, first open the source/PointrelBootstrapLoader.html file in a web browser (which also loads require.js included in that directory). Then as a demo you can cut and paste in the contents of bootstrap/bootstrap.json into the text field and click the "Replace All" button. There are hover hints over the buttons suggesting what they can do. After you have loaded some content, you can click on "List all IDs" to get a list of all the items. Click on an item to load the content in the text area. Then click "Open view" to display that content as part of the HTML page.
 
-After you store some content, you can click "Browse" to view only that content
+After you store some content, in some web browsers you can click "Browse" to view only that content
 in a new browser window instead of lower down on the editor page.
 Browsed content will look like a stand-alone web page or application.
 However, it is not stand-alone because it relies on the bootstrap loader.
@@ -27,8 +27,8 @@ Here is an alternate demo link, which will store data in a different local datab
 http://htmlpreview.github.io/?https://github.com/pdfernhout/Pointrel20140331/blob/master/source/PointrelBootstrapLoader.html
 
 "Browse" in viewOnly mode does not currently work correctly on this second site.
-Also, "Browse" does not seem to work as expected with FireFox 28,
-because FireFox seems to treat the query string to a file as part of the security domain -- so it creates a new IndexedDB which does not have the data.
+Also, "Browse" does not seem to work as expected with Firefox 28,
+because Firefox seems to treat the query string to a file as part of the security domain -- so it creates a new IndexedDB which does not have the data.
 
 Note:
 The project's source code itself is under the MIT license.
