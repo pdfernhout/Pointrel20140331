@@ -15,7 +15,7 @@
   See also: https://github.com/pdfernhout/Pointrel20140331
   -->
   <head>
-    <title>Bootstrap Pointrel on HTML5 using IndexedDB</title>
+    <title>Bootstrap Pointrel on HTML5 using IndexedDB -- Pointrel20140331</title>
     <style>
       /* For separating button groups */
       .divider{
@@ -51,7 +51,7 @@
         if (typeof(Storage) !== "undefined") {
           var userID = localStorage.Pointrel20140331_userID;
           console.log("userID", userID)
-          if (userID) document.getElementById("userIDInput").value= userID;
+          if (userID) document.getElementById("userID").value= userID;
         }
       }
       
@@ -68,7 +68,7 @@
       var openRequest = window.indexedDB.open("PointrelDatabase", databaseVersion);
       
       openRequest.onsuccess = function(event) {
-        console.log("openRequest on success");
+        console.log("on success");
         db = openRequest.result;
         db.onerror = function(event) {
           console.log("database error", event);
@@ -77,12 +77,11 @@
           var error = event.target.error;
           alert("Database error: " + error.name + " :: " + error.message);
         };
-        // Do this later in case would interfere with database setup
-        setTimeout(configureUIAfterDBLoaded, 1);
+        configureUIAfterDBLoaded();
       };
       
       openRequest.onerror = function(event) {
-        console.log("openRequest on error");
+        console.log("on error");
       };
       
       openRequest.onupgradeneeded = function(event) {
@@ -125,7 +124,6 @@
       }
 
       function configureUIAfterDBLoaded() {
-    	  console.log("configureUIAfterDBLoaded");
         var chosenDataID = getParameter("view");
         if (chosenDataID) {
           console.log("Read document from: " + chosenDataID);
@@ -134,14 +132,14 @@
           document.getElementById('bootstrap-controls').hidden = false;
           var chosenDataID = getParameter("edit");
           if (chosenDataID) {
-            document.getElementById("dataIDInput").value = chosenDataID;
+            document.getElementById("id").value = chosenDataID;
             fetch(true);
           }
         }
       }
       
       function viewOnlyForCurrent() {
-        var dataID = document.getElementById("dataIDInput").value;
+        var dataID = document.getElementById("id").value;
         console.log("viewOnlyForCurrent: " + dataID);
         var url = document.URL;
         var tempArray = url.split("?");
@@ -149,9 +147,9 @@
         var jumpURL = baseURL + "?view=" + encodeURI(dataID);
         console.log("viewOnlyForCurrent uri: " + jumpURL);
         // From: http://stackoverflow.com/questions/4907843/open-a-url-in-a-new-tab-using-javascript
-        document.getElementById("browseLink").setAttribute("href", jumpURL);
-        document.getElementById("browseLink").setAttribute("target", "_blank");
-        document.getElementById("browseLink").dispatchEvent((function(e) {
+        document.getElementById("browse-link").setAttribute("href", jumpURL);
+        document.getElementById("browse-link").setAttribute("target", "_blank");
+        document.getElementById("browse-link").dispatchEvent((function(e) {
           e.initMouseEvent("click", true, true, window, 0, 0, 0, 0, 0, false, false, false, false, 0, null);
           return e;
           }(document.createEvent('MouseEvents'))));
@@ -159,15 +157,15 @@
       
       function viewOnly(dataID) {
         console.log("viewOnly for: " + dataID);
-        var ids = {};
-        ids[dataID] = true;
+        var ids = {}
+        ids[dataID]  = true;
         findLatest(ids, function(items) {
-          console.log("items", items);
           var item = items[dataID];
-          console.log("viewOnly fetch result for", dataID);
+          console.log("viewOnly fetch result for", id);
           if (item !== undefined) {
             toggleDiv(dataID, item.data, false, true);
             lastLoadedContent = item.data;
+            document.title = "" + dataID + " -- Pointrel20140331";
           } else {
             var createLinkMessage = '<br>Click <a href="#" onclick="create()">here</a> to create it.';
             toggleDiv(dataID, "Resource not found for: " + dataID + createLinkMessage, false, true);
@@ -181,22 +179,23 @@
         resetViews();
         var chosenDataID = getParameter("view");
         if (chosenDataID) {
-          document.getElementById("dataIDInput").value = chosenDataID;
+          document.getElementById("id").value = chosenDataID;
         }
       }
 
       function fetch(proceed) {
         if (proceed !== true && !confirmIfChanged()) return;
-        var id = document.getElementById("dataIDInput").value;
+        var id = document.getElementById("id").value;
         console.log("fetch", id);
-        var ids = {};
+        var ids = {}
         ids[id]  = true;
         findLatest(ids, function(items) {
           var item = items[id];
           console.log("fetched result for", id);
           if (item !== undefined) {
-            document.getElementById("dataTextArea").value = item.data;
+            document.getElementById("data").value = item.data;
             lastLoadedContent = item.data;
+            document.title = "" + id + " -- Pointrel20140331";
             toast("fetched: " + item.timestamp + " " + escapeHtml(item.userID));
           } else {
             alert("resource not found for: " + id);
@@ -206,7 +205,7 @@
       
       function versions() {
         if (!confirmIfChanged()) return;
-        var id = document.getElementById("dataIDInput").value;
+        var id = document.getElementById("id").value;
         console.log("versions", id);
         var result = {};
         var objectStore = db.transaction("bootstrap").objectStore("bootstrap");
@@ -227,7 +226,7 @@
             for (var key in result) {
               dataString = dataString + key + "\n" + result[key] + "\n" + "--------------------" + "\n";
             }
-            document.getElementById("dataTextArea").value = dataString;
+            document.getElementById("data").value = dataString;
             lastLoadedContent = null;
           }
         };
@@ -303,7 +302,7 @@
       }
       
       function store() {
-        var id = document.getElementById("dataIDInput").value;
+        var id = document.getElementById("id").value;
         
         if (startsWith(id, "@log:")) {
           alert("User-supplied keys starting with '@log:' are not allowed for storage.")
@@ -316,7 +315,7 @@
           return;
         }
         
-        var data = document.getElementById("dataTextArea").value;
+        var data = document.getElementById("data").value;
         console.log("store", id);
         
         var transaction = db.transaction(["bootstrap"], "readwrite");
@@ -325,7 +324,7 @@
         };
         var objectStore = transaction.objectStore("bootstrap");
         
-        var userID = document.getElementById("userIDInput").value;
+        var userID = document.getElementById("userID").value;
         if (!userID) {
           alert("Please enter a userID to tag your commits\nsuch as an email address like anonymous@example.com");
           return;
@@ -357,7 +356,7 @@
       
       function confirmIfChanged() {
         if (lastLoadedContent === null) return true;
-        var data = document.getElementById("dataTextArea").value;
+        var data = document.getElementById("data").value;
         if (lastLoadedContent !== data) {
           return confirm("You have unsaved changes that will be lost; proceed?");
         }
@@ -371,7 +370,7 @@
       }
       
       function setID(id) {
-        document.getElementById("dataIDInput").value = id;
+        document.getElementById("id").value = id;
       }
       
       function escapeQuotes(text){
@@ -397,8 +396,8 @@
       }
       
       function view() {
-        var id = document.getElementById("dataIDInput").value;
-        var data = document.getElementById("dataTextArea").value;
+        var id = document.getElementById("id").value;
+        var data = document.getElementById("data").value;
         console.log("view", id);
         toggleDiv(id, data, true);
       }
@@ -471,8 +470,8 @@
             var dataString = JSON.stringify(result, null, "  ");
             var date = new Date();
             var timestamp = date.toISOString();
-            document.getElementById("dataIDInput").value = "Pointrel20140331.bootstrap.export." + timestamp + ".json";
-            document.getElementById("dataTextArea").value = dataString;
+            document.getElementById("id").value = "Pointrel20140331.bootstrap.export." + timestamp + ".json";
+            document.getElementById("data").value = dataString;
             lastLoadedContent = null;
           }
         };
@@ -486,7 +485,7 @@
         console.log("importAndMerge");
         if (confirm("Merge in items from JSON parsed from the test area?")) {
           console.log("importAndMerge proceeding");
-          var newData = document.getElementById("dataTextArea").value;
+          var newData = document.getElementById("data").value;
           if (!startsWith(newData, "{")) {
             console.log("bad data");
             alert("Must be JSON data starting with open brace ('{')");
@@ -523,7 +522,7 @@
         console.log("replaceAll");
         if (confirm("Replace all bootstrap data with JSON parsed from the test area?")) {
           console.log("replaceAll proceeding");
-          var newData = document.getElementById("dataTextArea").value;
+          var newData = document.getElementById("data").value;
           if (!startsWith(newData, "{")) {
             console.log("bad data");
             alert("Must be JSON data starting with open brace ('{')");
@@ -551,8 +550,8 @@
       
       function saveToFile() {
         console.log("saveToFile");
-        var id = document.getElementById("dataIDInput").value;
-        var content = document.getElementById("dataTextArea").value;
+        var id = document.getElementById("id").value;
+        var content = document.getElementById("data").value;
 
         var filename = prompt("Please enter a file name for saving", id);
         if (!filename) return;
@@ -575,8 +574,8 @@
             reader.onload = function(event) {
                 var contents = event.target.result;
                 // console.log("File contents: " + contents);
-                document.getElementById("dataTextArea").value = contents;
-                document.getElementById("dataIDInput").value = file.name;
+                document.getElementById("data").value = contents;
+                document.getElementById("id").value = file.name;
                 lastLoadedContent = contents;
             };
             
@@ -612,27 +611,27 @@
   <body>
     <div id="toastDiv" hidden>Some temporarily displayed toast-y contents</div>
     <div id="bootstrap-controls" hidden>
-      Data ID: <input type="text" id="dataIDInput" size="36"/>
-      <input type="submit" id="fetchButton" value="Fetch" title="Fetch the content associated with the ID from storage" onclick="fetch()"/>
-      <input type="submit" id="storeButton" value="Store" title="Store the content so it can be later retrieved again from the ID" onclick="store()"/>
+      Data ID: <input type="text" id="id" size="36"/>
+      <input type="submit" id="fetch" value="Fetch" title="Fetch the content associated with the ID from storage" onclick="fetch()"/>
+      <input type="submit" id="store" value="Store" title="Store the content so it can be later retrieved again from the ID" onclick="store()"/>
       <div class="divider"></div>
-      <input type="submit" id="viewButton" value="View below" title="Toggle a view of the current content in the text box as a div below associated with the ID" onclick="view()"/>
-      <input type="submit" id="browseButton" value="Browse" title="Open a new browser tab or window as viewOnly on the current stored value of the ID" onclick="viewOnlyForCurrent()"/>
-      <a href="#" id="browseLink" hidden></a>
-      <input type="submit" id="versionsButton" value="Versions" title="Collect all the previous versions of the ID's content and put them in the text box identified by timestamps" onclick="versions()"/>
-      User ID: <input type="text" id="userIDInput" size="27"/>
+      <input type="submit" id="view" value="View below" title="Toggle a view of the current content in the text box as a div below associated with the ID" onclick="view()"/>
+      <input type="submit" id="browse" value="Browse" title="Open a new browser tab or window as viewOnly on the current stored value of the ID" onclick="viewOnlyForCurrent()"/>
+      <a href="#" id="browse-link" hidden></a>
+      <input type="submit" id="versions" value="Versions" title="Collect all the previous versions of the ID's content and put them in the text box identified by timestamps" onclick="versions()"/>
+      User ID: <input type="text" id="userID" size="27"/>
       <br>
-      <textarea rows="4" cols="50" id="dataTextArea"></textarea>
+      <textarea rows="4" cols="50" id="data"></textarea>
       <br>
-      <input type="submit" id="listIDsButton" value="List all IDs" title="Toggle a view collecting all the IDs as a list with clickable links" onclick="listIDs()"/>
-      <input type="submit" id="resetButton" value="Close all Views" title="Clear all the view divs below" onclick="resetViews()"/>
+      <input type="submit" id="listIDs" value="List all IDs" title="Toggle a view collecting all the IDs as a list with clickable links" onclick="listIDs()"/>
+      <input type="submit" id="reset" value="Close all Views" title="Clear all the view divs below" onclick="resetViews()"/>
       <div class="divider"></div>
-      <input type="submit" id="exportAllButton" value="Export all" title="Collect all the versions of all IDs and put them as JSON in the text box" onclick="exportAll()"/>
-      <input type="submit" id="importAndMergeButton" value="Import and Merge" title="Import the JSON data in the text box and merge it with what is already in storage, setting items to the latest version" onclick="importAndMerge()"/>
-      <input type="submit" id="loadAllButton" value="Replace all" title="Replace all the stored data with the JSON data in the text box" onclick="replaceAll()"/>
+      <input type="submit" id="exportAll" value="Export all" title="Collect all the versions of all IDs and put them as JSON in the text box" onclick="exportAll()"/>
+      <input type="submit" id="importAndMerge" value="Import and Merge" title="Import the JSON data in the text box and merge it with what is already in storage, setting items to the latest version" onclick="importAndMerge()"/>
+      <input type="submit" id="loadAll" value="Replace all" title="Replace all the stored data with the JSON data in the text box" onclick="replaceAll()"/>
       <div class="divider"></div>
-      <input type="submit" id="loadFromFileButton" value="Load from file" title="Load the text area's content from a file" onclick="loadFromFile()"/>
-      <input type="submit" id="saveToFileButton" value="Save to file" title="Save the text area's current content to a file" onclick="saveToFile()"/>
+      <input type="submit" id="loadFromFile" value="Load from file" title="Load the text area's content from a file" onclick="loadFromFile()"/>
+      <input type="submit" id="saveToFile" value="Save to file" title="Save the text area's current content to a file" onclick="saveToFile()"/>
       <input type="file" id="fileInput" hidden/>
     </div>
     <div id="view-content"></div>
