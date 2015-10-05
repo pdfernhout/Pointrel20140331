@@ -105,10 +105,10 @@
       };
       
       function getParameter(paramName) {
-        var searchString = window.location.search.substring(1);
+        var hashString = window.location.hash.substring(1);
         var i;
         var val;
-        var params = searchString.split("&");
+        var params = hashString.split("&");
 
         for (i = 0; i < params.length; i++) {
             val = params[i].split("=");
@@ -142,9 +142,9 @@
         var dataID = document.getElementById("id").value;
         console.log("viewOnlyForCurrent: " + dataID);
         var url = document.URL;
-        var tempArray = url.split("?");
+        var tempArray = url.split("#");
         var baseURL = tempArray[0];
-        var jumpURL = baseURL + "?view=" + encodeURI(dataID);
+        var jumpURL = baseURL + "#view=" + encodeURI(dataID);
         console.log("viewOnlyForCurrent uri: " + jumpURL);
         // From: http://stackoverflow.com/questions/4907843/open-a-url-in-a-new-tab-using-javascript
         document.getElementById("browse-link").setAttribute("href", jumpURL);
